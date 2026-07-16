@@ -28,7 +28,7 @@ This repository is the **Phase 1 foundation**: a clean, production-grade monorep
 
 **Backend**
 - Java 21, Spring Boot 3
-- Spring Web, Spring Security (foundation), Spring Data JPA
+- Spring Web, Spring Security (JWT auth, BCrypt), Spring Data JPA
 - PostgreSQL, Flyway
 - Bean Validation, Lombok, MapStruct
 - OpenAPI / Swagger, Spring Boot Actuator
@@ -148,6 +148,41 @@ The app is served at `http://localhost:5173` and proxies API calls to the backen
 | `GET /swagger-ui.html` | OpenAPI / Swagger UI |
 | `GET /v3/api-docs` | OpenAPI specification |
 
+### Authentication
+
+Phase 2 adds stateless JWT authentication. Public endpoints are limited to health,
+documentation, and the unauthenticated auth routes; every other route requires a
+valid access token in the `Authorization: Bearer <token>` header.
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| `POST` | `/api/auth/register` | Public | Create an account, returns tokens + profile |
+| `POST` | `/api/auth/login` | Public | Authenticate, returns tokens + profile |
+| `POST` | `/api/auth/refresh` | Public* | Rotate a refresh token for a new token pair |
+| `POST` | `/api/auth/logout` | Protected | Revoke refresh token(s) |
+| `GET` | `/api/users/me` | Protected | Current user profile |
+| `PATCH` | `/api/users/me` | Protected | Update profile (name, currency, timezone, avatar) |
+| `PATCH` | `/api/users/me/password` | Protected | Change password (revokes other sessions) |
+
+\* The refresh endpoint is public but requires a valid refresh token in the body.
+
+All responses use the standard `ApiResponse` envelope:
+
+```json
+{
+  "success": true,
+  "message": "Login successful.",
+  "data": {
+    "accessToken": "eyJ…",
+    "refreshToken": "eyJ…",
+    "tokenType": "Bearer",
+    "expiresInSeconds": 900,
+    "user": { "id": "…", "email": "you@example.com", "role": "USER", "accountStatus": "ACTIVE" }
+  },
+  "timestamp": "2026-07-16T…"
+}
+```
+
 Example health response:
 
 ```json
@@ -188,7 +223,7 @@ The quick start above does not use Docker. See `docs/DEVELOPMENT.md` for details
 
 ## Roadmap
 
-- **Phase 2** — Authentication & User Management (JWT, accounts, profiles)
+- **Phase 2** — Authentication & User Management (JWT access/refresh tokens, registration, login, profile, password change, role foundation) — *complete*
 - **Phase 3** — Transactions, categories, and budgeting CRUD
 - **Phase 4** — Analytics and financial insights
 - **Phase 5** — Receipt intelligence

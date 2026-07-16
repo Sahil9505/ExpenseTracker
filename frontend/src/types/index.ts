@@ -38,3 +38,36 @@ export interface TransactionItem {
   date: string;
   type: 'income' | 'expense';
 }
+
+export type UserRole = 'USER' | 'ADMIN';
+export type AccountStatus = 'ACTIVE' | 'DISABLED' | 'LOCKED' | 'PENDING';
+
+/** The authenticated user as returned by the API. Never includes secrets. */
+export interface CurrentUser {
+  id: string;
+  email: string;
+  fullName: string | null;
+  role: UserRole;
+  accountStatus: AccountStatus;
+  preferredCurrency: string;
+  timezone: string | null;
+  avatarUrl: string | null;
+  lastLoginAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Tokens issued on register, login, and refresh. */
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresInSeconds: number;
+  user: CurrentUser;
+}
+
+/** Field-level validation error returned by the API. */
+export interface ApiFieldError {
+  field: string;
+  message: string;
+}

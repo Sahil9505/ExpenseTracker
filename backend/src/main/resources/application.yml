@@ -26,6 +26,11 @@ nova:
     allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
     allowed-headers: "*"
     allow-credentials: true
+  jwt:
+    # Local/development default only. Always override JWT_SECRET in shared/production.
+    secret: ${JWT_SECRET:nova-local-development-secret-do-not-use-in-production-0123456789}
+    access-token-minutes: ${JWT_ACCESS_TOKEN_MINUTES:15}
+    refresh-token-days: ${JWT_REFRESH_TOKEN_DAYS:30}
 
 info:
   app:
