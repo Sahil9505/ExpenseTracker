@@ -1,5 +1,6 @@
 package com.nova.finance.transaction;
 
+import com.nova.common.BaseEntity;
 import com.nova.finance.account.Account;
 import com.nova.finance.category.Category;
 import com.nova.user.User;
@@ -22,13 +23,23 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+/**
+ * A single financial event: income, expense, or transfer. The {@code amount} is
+ * always stored positive; direction is implied by {@link Type}. For transfers the
+ * {@code account} is the source and {@code destinationAccount} is the target.
+ *
+ * <p>Creating, updating, or deleting a transaction keeps the affected account
+ * balances in sync through the transaction service, never by editing an account
+ * directly.</p>
+ */
 @Entity
 @Table(name = "transactions")
 @Getter
 @Setter
 @NoArgsConstructor
-public class Transaction extends com.nova.common.BaseEntity {
+public class Transaction extends BaseEntity {
 
+    /** Direction of the money movement. */
     public enum Type {
         INCOME, EXPENSE, TRANSFER
     }
@@ -46,6 +57,10 @@ public class Transaction extends com.nova.common.BaseEntity {
     private Account account;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "destination_account_id")
+    private Account destinationAccount;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category;
 
@@ -56,7 +71,17 @@ public class Transaction extends com.nova.common.BaseEntity {
     @Column(nullable = false)
     private Type type;
 
+    @Column(length = 255)
+    private String merchant;
+
+    @Column(length = 255)
     private String description;
+
+    @Column(length = 8, nullable = false)
+    private String currency;
+
+    @Column(length = 255)
+    private String tags;
 
     @Column(name = "occurred_at", nullable = false)
     private OffsetDateTime occurredAt;

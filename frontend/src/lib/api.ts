@@ -135,4 +135,64 @@ export const api = {
     request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined }),
+  delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
+};
+
+// ---------------------------------------------------------------------------
+// Finance API (Phase 3)
+// ---------------------------------------------------------------------------
+
+import type {
+  Account,
+  Category,
+  CreateAccountPayload,
+  CreateCategoryPayload,
+  CreateTransactionPayload,
+  DashboardSummary,
+  Transaction,
+  TransactionQuery,
+  UpdateAccountPayload,
+  UpdateCategoryPayload,
+  UpdateTransactionPayload,
+} from '@/types';
+
+export const accountsApi = {
+  list: () => api.get<Account[]>('/api/accounts'),
+  get: (id: string) => api.get<Account>(`/api/accounts/${id}`),
+  create: (payload: CreateAccountPayload) => api.post<Account>('/api/accounts', payload),
+  update: (id: string, payload: UpdateAccountPayload) =>
+    api.patch<Account>(`/api/accounts/${id}`, payload),
+  remove: (id: string) => api.delete<void>(`/api/accounts/${id}`),
+};
+
+export const categoriesApi = {
+  list: () => api.get<Category[]>('/api/categories'),
+  get: (id: string) => api.get<Category>(`/api/categories/${id}`),
+  create: (payload: CreateCategoryPayload) => api.post<Category>('/api/categories', payload),
+  update: (id: string, payload: UpdateCategoryPayload) =>
+    api.patch<Category>(`/api/categories/${id}`, payload),
+  remove: (id: string) => api.delete<void>(`/api/categories/${id}`),
+};
+
+export const transactionsApi = {
+  list: (query: TransactionQuery = {}) => {
+    const params = new URLSearchParams();
+    if (query.type) params.set('type', query.type);
+    if (query.accountId) params.set('accountId', query.accountId);
+    if (query.categoryId) params.set('categoryId', query.categoryId);
+    if (query.from) params.set('from', query.from);
+    if (query.to) params.set('to', query.to);
+    if (query.search) params.set('search', query.search);
+    const qs = params.toString();
+    return api.get<Transaction[]>(`/api/transactions${qs ? `?${qs}` : ''}`);
+  },
+  get: (id: string) => api.get<Transaction>(`/api/transactions/${id}`),
+  create: (payload: CreateTransactionPayload) => api.post<Transaction>('/api/transactions', payload),
+  update: (id: string, payload: UpdateTransactionPayload) =>
+    api.patch<Transaction>(`/api/transactions/${id}`, payload),
+  remove: (id: string) => api.delete<void>(`/api/transactions/${id}`),
+};
+
+export const dashboardApi = {
+  summary: () => api.get<DashboardSummary>('/api/dashboard/summary'),
 };
