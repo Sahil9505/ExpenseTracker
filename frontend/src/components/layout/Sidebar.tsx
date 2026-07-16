@@ -21,11 +21,11 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/' },
-  { label: 'Transactions', icon: Receipt, soon: true },
+  { label: 'Transactions', icon: Receipt, to: '/transactions' },
+  { label: 'Accounts', icon: CreditCard, to: '/accounts' },
+  { label: 'Categories', icon: PieChart, to: '/categories' },
   { label: 'Budgets', icon: Wallet, soon: true },
-  { label: 'Categories', icon: PieChart, soon: true },
   { label: 'Analytics', icon: BarChart3, soon: true },
-  { label: 'Accounts', icon: CreditCard, soon: true },
   { label: 'Profile', icon: Settings, to: '/settings/profile' },
 ];
 
@@ -93,8 +93,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       </nav>
 
       <div className="rounded-md bg-surface-2 px-3 py-3 text-xs text-muted-foreground">
-        <p className="font-medium text-foreground">Nova Foundation</p>
-        <p>Phase 2 · v0.1.0</p>
+        <p className="font-medium text-foreground">Nova Finance</p>
+        <p>Phase 3 · v0.3.0</p>
       </div>
     </div>
   );

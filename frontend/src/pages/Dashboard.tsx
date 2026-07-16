@@ -1,5 +1,5 @@
 import { type CSSProperties } from 'react';
-import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Receipt } from 'lucide-react';
 import {
   Area,
   AreaChart,
@@ -13,21 +13,48 @@ import {
   YAxis,
 } from 'recharts';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartCard } from '@/components/ui/chart-card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/loading-state';
 import { StatCard } from '@/components/ui/stat-card';
+import { useDashboardSummary } from '@/hooks/useDashboard';
 import { useTheme } from '@/context/ThemeProvider';
-import { formatCompact, formatCurrency } from '@/lib/utils';
-import {
-  budgetProgress,
-  categoryBreakdown,
-  recentTransactions,
-  spendingTrend,
-  statMetrics,
-} from '@/data/mock';
+import { colorOf } from '@/lib/finance';
+import { formatCurrency, formatCompact } from '@/lib/utils';
+import type { StatMetric, Transaction } from '@/types';
+
+const typeIcon = (tx: Transaction) => {
+  if (tx.type === 'INCOME') return ArrowDownLeft;
+  if (tx.type === 'TRANSFER') return ArrowLeftRight;
+  return ArrowUpRight;
+};
+
+const iconTone = (tx: Transaction) => {
+  if (tx.type === 'INCOME') return 'bg-success/15 text-success';
+  if (tx.type === 'TRANSFER') return 'bg-primary/15 text-primary';
+  return 'bg-surface-2 text-muted-foreground';
+};
+
+const amountTone = (tx: Transaction) =>
+  tx.type === 'INCOME' ? 'text-success' : 'text-foreground';
+
+const amountPrefix = (tx: Transaction) =>
+  tx.type === 'INCOME' ? '+' : tx.type === 'EXPENSE' ? '-' : '';
+
+const titleFor = (tx: Transaction) =>
+  tx.merchant || tx.note || (tx.type === 'TRANSFER' ? 'Transfer' : 'Transaction');
+
+const subtitleFor = (tx: Transaction) =>
+  tx.type === 'TRANSFER'
+    ? `${tx.account?.name ?? 'Account'} → ${tx.destinationAccount?.name ?? 'Account'}`
+    : (tx.category?.name ?? '');
 
 export function Dashboard() {
   const { theme } = useTheme();
+  const query = useDashboardSummary();
+
   const axisColor = theme === 'dark' ? '#94A3B8' : '#475569';
   const gridColor = theme === 'dark' ? '#334155' : '#E2E8F0';
   const tooltipStyle: CSSProperties = {
@@ -37,22 +64,109 @@ export function Dashboard() {
     color: theme === 'dark' ? '#F8FAFC' : '#0F172A',
     fontSize: '12px',
   };
-  const totalSpending = categoryBreakdown.reduce((sum, c) => sum + c.amount, 0);
+
+  if (query.isLoading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <Skeleton className="h-9 w-48 rounded-md" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} className="h-28 w-full rounded-lg" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Skeleton className="h-80 w-full rounded-lg" />
+          <Skeleton className="h-80 w-full rounded-lg" />
+        </div>
+        <Skeleton className="h-64 w-full rounded-lg" />
+      </div>
+    );
+  }
+
+  if (query.isError || !query.data) {
+    return (
+      <div className="flex flex-col gap-6">
+        <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+        <div className="rounded-lg border border-border bg-surface p-6 text-sm">
+          <p className="font-medium">We couldn't load your dashboard.</p>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => query.refetch()}>
+            Try again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const summary = query.data;
+  const currency = summary.currency;
+  const savingsRate = summary.monthlyIncome > 0
+    ? Math.round((summary.netCashFlow / summary.monthlyIncome) * 100)
+    : 0;
+
+  const metrics: StatMetric[] = [
+    {
+      id: 'balance',
+      label: 'Total Balance',
+      value: summary.totalBalance,
+      format: 'currency',
+      currency,
+      trend: 0,
+      trendDirection: 'flat',
+      caption: `${summary.accountsCount} account${summary.accountsCount === 1 ? '' : 's'}`,
+    },
+    {
+      id: 'income',
+      label: 'Monthly Income',
+      value: summary.monthlyIncome,
+      format: 'currency',
+      currency,
+      trend: 0,
+      trendDirection: 'flat',
+      caption: 'This month',
+    },
+    {
+      id: 'expenses',
+      label: 'Monthly Expenses',
+      value: summary.monthlyExpenses,
+      format: 'currency',
+      currency,
+      trend: 0,
+      trendDirection: 'flat',
+      caption: 'This month',
+    },
+    {
+      id: 'net',
+      label: 'Net Cash Flow',
+      value: summary.netCashFlow,
+      format: 'currency',
+      currency,
+      trend: savingsRate,
+      trendDirection: summary.monthlyIncome > 0 ? (summary.netCashFlow >= 0 ? 'up' : 'down') : 'flat',
+      caption: 'Saved this month',
+    },
+  ];
+
+  const categoryData = summary.categoryBreakdown.map((item) => ({
+    category: item.name,
+    color: colorOf(item.color),
+    amount: item.amount,
+  }));
+  const totalSpending = categoryData.reduce((sum, entry) => sum + entry.amount, 0);
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-sm text-muted-foreground">
-            A snapshot of your finances this month.
-          </p>
+          <p className="text-sm text-muted-foreground">A snapshot of your finances this month.</p>
         </div>
-        <Badge variant="outline">July 2026</Badge>
+        <Badge variant="outline">
+          {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+        </Badge>
       </div>
 
       <section aria-label="Key metrics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {statMetrics.map((metric) => (
+        {metrics.map((metric) => (
           <StatCard key={metric.id} metric={metric} />
         ))}
       </section>
@@ -60,7 +174,7 @@ export function Dashboard() {
       <section aria-label="Trends" className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard title="Cash Flow" description="Income vs. expenses over time">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={spendingTrend} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+            <AreaChart data={summary.monthlyTrend} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
               <defs>
                 <linearGradient id="incomeFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#10B981" stopOpacity={0.35} />
@@ -72,7 +186,7 @@ export function Dashboard() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-              <XAxis dataKey="month" stroke={axisColor} tickLine={false} axisLine={false} fontSize={12} />
+              <XAxis dataKey="label" stroke={axisColor} tickLine={false} axisLine={false} fontSize={12} />
               <YAxis
                 stroke={axisColor}
                 tickLine={false}
@@ -103,121 +217,101 @@ export function Dashboard() {
         </ChartCard>
 
         <ChartCard title="Spending by Category" description="Where your money went">
-          <div className="flex h-full items-center gap-4">
-            <div className="relative h-full w-1/2">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={categoryBreakdown}
-                    dataKey="amount"
-                    nameKey="category"
-                    innerRadius="62%"
-                    outerRadius="92%"
-                    paddingAngle={2}
-                    stroke="none"
-                  >
-                    {categoryBreakdown.map((entry) => (
-                      <Cell key={entry.category} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={tooltipStyle} formatter={(value) => formatCurrency(Number(value))} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-xs text-muted-foreground">Total</span>
-                <span className="text-sm font-bold tabular-nums">{formatCurrency(totalSpending)}</span>
-              </div>
+          {categoryData.length === 0 ? (
+            <div className="flex h-full items-center justify-center">
+              <p className="text-sm text-muted-foreground">No spending recorded yet this month.</p>
             </div>
-            <ul className="flex flex-1 flex-col gap-2">
-              {categoryBreakdown.map((entry) => (
-                <li key={entry.category} className="flex items-center gap-2 text-sm">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
-                  <span className="text-muted-foreground">{entry.category}</span>
-                  <span className="ml-auto font-medium tabular-nums">{formatCurrency(entry.amount)}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          ) : (
+            <div className="flex h-full items-center gap-4">
+              <div className="relative h-full w-1/2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={categoryData}
+                      dataKey="amount"
+                      nameKey="category"
+                      innerRadius="62%"
+                      outerRadius="92%"
+                      paddingAngle={2}
+                      stroke="none"
+                    >
+                      {categoryData.map((entry) => (
+                        <Cell key={entry.category} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={tooltipStyle} formatter={(value) => formatCurrency(Number(value))} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-xs text-muted-foreground">Total</span>
+                  <span className="text-sm font-bold tabular-nums">{formatCurrency(totalSpending)}</span>
+                </div>
+              </div>
+              <ul className="flex flex-1 flex-col gap-2">
+                {categoryData.map((entry) => (
+                  <li key={entry.category} className="flex items-center gap-2 text-sm">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                    <span className="text-muted-foreground">{entry.category}</span>
+                    <span className="ml-auto font-medium tabular-nums">{formatCurrency(entry.amount)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </ChartCard>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Budget Progress</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            {budgetProgress.map((item) => {
-              const pct = Math.min(100, Math.round((item.spent / item.limit) * 100));
-              const over = item.spent > item.limit;
-              return (
-                <div key={item.category}>
-                  <div className="mb-1 flex items-center justify-between text-sm">
-                    <span className="font-medium">{item.category}</span>
-                    <span className="text-muted-foreground tabular-nums">
-                      {formatCurrency(item.spent)} / {formatCurrency(item.limit)}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Transactions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {summary.recentTransactions.length === 0 ? (
+            <EmptyState
+              icon={Receipt}
+              title="No transactions yet"
+              description="Add an account and a transaction to see your recent activity here."
+            />
+          ) : (
+            <ul className="flex flex-col">
+              {summary.recentTransactions.map((tx) => {
+                const Icon = typeIcon(tx);
+                return (
+                  <li
+                    key={tx.id}
+                    className="flex items-center gap-3 border-b border-border py-3 last:border-0"
+                  >
+                    <span
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${iconTone(tx)}`}
+                    >
+                      <Icon className="h-4 w-4" aria-hidden="true" />
                     </span>
-                  </div>
-                  <div
-                    className="h-2 w-full overflow-hidden rounded-full bg-surface-2"
-                    role="progressbar"
-                    aria-valuenow={pct}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-label={`${item.category} budget`}
-                  >
-                    <div
-                      className={`h-full rounded-full ${over ? 'bg-danger' : 'bg-primary'}`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Transactions</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col">
-            {recentTransactions.map((tx) => {
-              const isIncome = tx.type === 'income';
-              return (
-                <div
-                  key={tx.id}
-                  className="flex items-center gap-3 border-b border-border py-3 last:border-0"
-                >
-                  <div
-                    className={`flex h-9 w-9 items-center justify-center rounded-full ${
-                      isIncome ? 'bg-success/15 text-success' : 'bg-danger/15 text-danger'
-                    }`}
-                  >
-                    {isIncome ? (
-                      <ArrowDownLeft className="h-4 w-4" aria-hidden="true" />
-                    ) : (
-                      <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{tx.description}</p>
-                    <p className="text-xs text-muted-foreground">{tx.category}</p>
-                  </div>
-                  <span
-                    className={`text-sm font-semibold tabular-nums ${
-                      isIncome ? 'text-success' : 'text-foreground'
-                    }`}
-                  >
-                    {isIncome ? '+' : '-'}
-                    {formatCurrency(Math.abs(tx.amount))}
-                  </span>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-      </section>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{titleFor(tx)}</p>
+                      <p className="truncate text-xs text-muted-foreground">{subtitleFor(tx)}</p>
+                    </div>
+                    {tx.type === 'TRANSFER' ? (
+                      <Badge variant="outline">Transfer</Badge>
+                    ) : tx.category?.color ? (
+                      <span className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: colorOf(tx.category.color) }}
+                        />
+                        {tx.category.name}
+                      </span>
+                    ) : null}
+                    <span className={`shrink-0 text-sm font-semibold tabular-nums ${amountTone(tx)}`}>
+                      {amountPrefix(tx)}
+                      {formatCurrency(Math.abs(tx.amount), tx.currency)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

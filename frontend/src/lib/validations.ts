@@ -62,3 +62,104 @@ export const changePasswordSchema = z
   });
 
 export type ChangePasswordValues = z.infer<typeof changePasswordSchema>;
+
+// ---------------------------------------------------------------------------
+// Finance validation (Phase 3)
+// ---------------------------------------------------------------------------
+
+export const ACCOUNT_TYPES = [
+  'CASH',
+  'CHECKING',
+  'SAVINGS',
+  'CREDIT_CARD',
+  'WALLET',
+] as const;
+
+export const accountSchema = z.object({
+  name: z.string().trim().min(1, 'Account name is required').max(120, 'Name is too long'),
+  type: z.enum(ACCOUNT_TYPES),
+  currency: z
+    .string()
+    .trim()
+    .transform((value) => value.toUpperCase())
+    .pipe(z.string().regex(/^[A-Z]{3}$/, 'Use a 3-letter currency code')),
+  balance: z.coerce.number().optional().default(0),
+  institution: z.string().trim().max(120, 'Institution name is too long').optional().or(z.literal('')),
+  color: z.string().trim().max(32, 'Color is too long').optional().or(z.literal('')),
+  icon: z.string().trim().max(64, 'Icon is too long').optional().or(z.literal('')),
+  active: z.boolean().optional(),
+});
+
+export type AccountValues = z.infer<typeof accountSchema>;
+
+export const accountUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(120).optional().or(z.literal('')),
+  type: z.enum(ACCOUNT_TYPES).optional(),
+  currency: z
+    .string()
+    .trim()
+    .transform((value) => value.toUpperCase())
+    .pipe(z.string().regex(/^[A-Z]{3}$/, 'Use a 3-letter currency code'))
+    .optional()
+    .or(z.literal('')),
+  balance: z.coerce.number().optional(),
+  active: z.boolean().optional(),
+  institution: z.string().trim().max(120).optional().or(z.literal('')),
+  color: z.string().trim().max(32).optional().or(z.literal('')),
+  icon: z.string().trim().max(64).optional().or(z.literal('')),
+});
+
+export type AccountUpdateValues = z.infer<typeof accountUpdateSchema>;
+
+export const categorySchema = z.object({
+  name: z.string().trim().min(1, 'Category name is required').max(120, 'Name is too long'),
+  type: z.enum(['INCOME', 'EXPENSE']),
+  color: z.string().trim().max(32, 'Color is too long').optional().or(z.literal('')),
+  icon: z.string().trim().max(64, 'Icon is too long').optional().or(z.literal('')),
+});
+
+export type CategoryValues = z.infer<typeof categorySchema>;
+
+export const transactionSchema = z
+  .object({
+    type: z.enum(['INCOME', 'EXPENSE', 'TRANSFER']),
+    accountId: z.string().optional(),
+    destinationAccountId: z.string().optional(),
+    categoryId: z.string().optional(),
+    amount: z.coerce
+      .number({ invalid_type_error: 'Amount is required' })
+      .positive('Amount must be greater than zero'),
+    merchant: z.string().trim().max(255).optional().or(z.literal('')),
+    note: z.string().trim().max(255).optional().or(z.literal('')),
+    occurredAt: z.string().min(1, 'Date is required'),
+  })
+  .superRefine((value, ctx) => {
+    if (value.type === 'TRANSFER') {
+      if (!value.accountId) {
+        ctx.addIssue({ code: 'custom', path: ['accountId'], message: 'Source account is required' });
+      }
+      if (!value.destinationAccountId) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['destinationAccountId'],
+          message: 'Destination account is required',
+        });
+      }
+      if (value.accountId && value.destinationAccountId && value.accountId === value.destinationAccountId) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['destinationAccountId'],
+          message: 'Source and destination must be different',
+        });
+      }
+    } else {
+      if (!value.accountId) {
+        ctx.addIssue({ code: 'custom', path: ['accountId'], message: 'Account is required' });
+      }
+      if (!value.categoryId) {
+        ctx.addIssue({ code: 'custom', path: ['categoryId'], message: 'Category is required' });
+      }
+    }
+  });
+
+export type TransactionValues = z.infer<typeof transactionSchema>;

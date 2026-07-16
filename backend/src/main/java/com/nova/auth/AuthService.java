@@ -15,6 +15,7 @@ import com.nova.user.AccountStatus;
 import com.nova.user.Role;
 import com.nova.user.User;
 import com.nova.user.UserRepository;
+import com.nova.user.event.UserRegisteredEvent;
 import com.nova.user.mapper.UserMapper;
 import com.nova.user.web.dto.UserResponse;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -41,6 +42,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserMapper userMapper;
     private final long accessTokenMinutes;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     public AuthService(
             UserRepository userRepository,
@@ -49,7 +51,8 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
             UserMapper userMapper,
-            JwtProperties jwtProperties) {
+            JwtProperties jwtProperties,
+            org.springframework.context.ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.refreshTokenService = refreshTokenService;
         this.jwtService = jwtService;
@@ -57,6 +60,7 @@ public class AuthService {
         this.authenticationManager = authenticationManager;
         this.userMapper = userMapper;
         this.accessTokenMinutes = jwtProperties.accessTokenMinutes();
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -74,6 +78,7 @@ public class AuthService {
                 AccountStatus.ACTIVE,
                 currency);
         user = userRepository.save(user);
+        eventPublisher.publishEvent(new UserRegisteredEvent(user.getId()));
         return buildAuthResponse(user);
     }
 
