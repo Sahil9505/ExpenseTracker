@@ -196,12 +196,13 @@ backend/src/main/java/com/nova/
   NovaApplication
   common/
     api/         # ApiResponse envelope
-    config/      # CORS, OpenAPI, config properties
+    config/      # CORS, OpenAPI, JwtProperties
     exception/   # GlobalExceptionHandler, ErrorCode, domain exceptions
-    security/    # SecurityConfig
+    security/    # SecurityConfig, JwtAuthenticationFilter, entry/denied handlers
     validation/  # ValidationError model
   health/        # Health endpoint
-  user/          # User domain
+  auth/          # AuthController, AuthService, security (JWT, refresh tokens)
+  user/          # User domain, UserService, profile DTOs/mapper
   finance/
     account/ transaction/ category/ budget/
 
@@ -233,11 +234,47 @@ speaks for itself.
 
 | Phase | Scope |
 | --- | --- |
-| **1 (current)** | Foundation: backend shell, design system, schema, health, docs |
-| **2** | Authentication & User Management (JWT, accounts, profiles) |
+| **1** | Foundation: backend shell, design system, schema, health, docs |
+| **2 (current)** | Authentication & User Management — JWT access/refresh tokens, registration, login, profile, password change, role foundation |
 | **3** | Transactions, categories, budgets — full CRUD |
 | **4** | Analytics & financial insights |
 | **5** | Receipt intelligence |
 
 Each phase extends this foundation without rewrites. The architecture above is
 designed so Phase 2+ slots in cleanly.
+
+---
+
+## 13. Authentication Standards
+
+Phase 2 introduces the auth contract. Every later phase relies on it, so it is
+fixed here.
+
+- **Stateless JWT.** The API is session-less. Each request carries a Bearer access
+  token; the server validates it and rebuilds the principal per request. No
+  server-side session store.
+- **Token split.**
+  - *Access token* — short-lived (default 15 min), carries `sub` (email), `uid`
+    (user id), and `role`. Used for every protected request.
+  - *Refresh token* — longer-lived (default 30 days). The **raw** value is returned
+    to the client exactly once; only its **SHA-256 hash** is persisted in
+    `refresh_tokens`. Rotation is mandatory: using a refresh token issues a new
+    pair and revokes the old token (`replaced_by`).
+- **Endpoints.** Public: `health`, Swagger/OpenAPI, `register`, `login`, `refresh`.
+  Protected: `GET/PATCH /api/users/me`, `PATCH /api/users/me/password`, `logout`,
+  and every route added later. Unauthenticated access returns the standard
+  `ApiResponse` envelope with `success: false` and `code: UNAUTHORIZED` (401);
+  authenticated-but-forbidden returns `FORBIDDEN` (403).
+- **Passwords.** BCrypt with a salt. The hash is never exposed in any response,
+  log, or token.
+- **Validation.** Bean Validation on every request body; failures return a 400
+  with field-level `errors` inside the `ApiResponse` `data` object.
+- **No secrets in the repo.** `JWT_SECRET` comes from the environment. A local-only
+  default exists for convenience and must never reach shared/production.
+- **Frontend.** Tokens live in `localStorage` (see `lib/auth.ts`). The API client
+  (`lib/api.ts`) attaches the access token and performs one silent refresh on a
+  401 before surfacing the error. `AuthProvider` holds the session; `ProtectedRoute`
+  gates authenticated areas and preserves the intended destination.
+- **Business logic stays out of controllers.** `AuthService` and `UserService`
+  own orchestration; controllers map HTTP ↔ application calls and return the
+  `ApiResponse` envelope.

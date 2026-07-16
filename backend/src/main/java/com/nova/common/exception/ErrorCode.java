@@ -12,6 +12,8 @@ public enum ErrorCode {
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "One or more fields are invalid."),
     CONFLICT(HttpStatus.CONFLICT, "The request conflicts with the current state."),
     BAD_REQUEST(HttpStatus.BAD_REQUEST, "The request could not be processed."),
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Authentication is required to access this resource."),
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "The presented token is invalid or expired."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "You are not allowed to perform this action."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred.");
 

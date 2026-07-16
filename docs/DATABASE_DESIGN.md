@@ -92,6 +92,43 @@ Unique: `(user_id, name)`.
 
 ---
 
+## Phase 2 Schema (V2)
+
+V2 extends `app_users` and adds the `refresh_tokens` table. V1 is never edited;
+all changes ship as new migrations.
+
+### `app_users` (extended)
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | `uuid` PK | (Phase 1) |
+| `email` | `varchar(255)` | unique, not null (Phase 1) |
+| `full_name` | `varchar(255)` | nullable (Phase 1) |
+| `password_hash` | `varchar(255)` | BCrypt hash; never returned to clients |
+| `role` | `varchar(32)` | not null, default `'USER'` (`USER`, `ADMIN`) |
+| `account_status` | `varchar(32)` | not null, default `'ACTIVE'` (`ACTIVE`, `DISABLED`, `LOCKED`, `PENDING`) |
+| `preferred_currency` | `varchar(8)` | not null, default `'USD'` |
+| `timezone` | `varchar(64)` | nullable |
+| `avatar_url` | `varchar(512)` | nullable |
+| `last_login_at` | `timestamptz` | nullable, set on login |
+| `created_at` / `updated_at` | `timestamptz` | audit (Phase 1) |
+
+### `refresh_tokens`
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | `uuid` PK | |
+| `user_id` | `uuid` FK → `app_users` | `ON DELETE CASCADE` |
+| `token_hash` | `varchar(255)` | SHA-256 hash of the issued raw token (the raw value is never stored) |
+| `expires_at` | `timestamptz` | not null |
+| `revoked` | `boolean` | not null, default `false` |
+| `replaced_by` | `uuid` | nullable; points at the token that replaced this one after rotation |
+| `created_at` / `updated_at` | `timestamptz` | audit |
+
+Unique: `token_hash`. Indexes: `(user_id)`, `(token_hash)`.
+
+---
+
 ## Migration Strategy
 
 - Each change is a new `V{n}__{description}.sql` file.

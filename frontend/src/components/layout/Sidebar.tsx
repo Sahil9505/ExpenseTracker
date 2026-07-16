@@ -1,4 +1,12 @@
-import { BarChart3, CreditCard, LayoutDashboard, PieChart, Receipt, Wallet } from 'lucide-react';
+import {
+  BarChart3,
+  CreditCard,
+  LayoutDashboard,
+  PieChart,
+  Receipt,
+  Settings,
+  Wallet,
+} from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -18,6 +26,7 @@ const navItems: NavItem[] = [
   { label: 'Categories', icon: PieChart, soon: true },
   { label: 'Analytics', icon: BarChart3, soon: true },
   { label: 'Accounts', icon: CreditCard, soon: true },
+  { label: 'Profile', icon: Settings, to: '/settings/profile' },
 ];
 
 interface SidebarProps {
@@ -85,7 +94,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
 
       <div className="rounded-md bg-surface-2 px-3 py-3 text-xs text-muted-foreground">
         <p className="font-medium text-foreground">Nova Foundation</p>
-        <p>Phase 1 · v0.1.0</p>
+        <p>Phase 2 · v0.1.0</p>
       </div>
     </div>
   );
