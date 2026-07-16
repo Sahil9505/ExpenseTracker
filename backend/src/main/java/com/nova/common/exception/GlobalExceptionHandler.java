@@ -72,6 +72,18 @@ public class GlobalExceptionHandler {
         return build(ex.getErrorCode().getStatus(), ApiResponse.error(ex.getMessage(), body));
     }
 
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ApiResponse<ApiError>> handleInvalidCredentials(NovaException ex) {
+        ApiError body = ApiError.of(ex.getErrorCode(), ex.getMessage());
+        return build(ex.getErrorCode().getStatus(), ApiResponse.error(ex.getMessage(), body));
+    }
+
+    @ExceptionHandler(InvalidTokenException.class)
+    public ResponseEntity<ApiResponse<ApiError>> handleInvalidToken(NovaException ex) {
+        ApiError body = ApiError.of(ex.getErrorCode(), ex.getMessage());
+        return build(ex.getErrorCode().getStatus(), ApiResponse.error(ex.getMessage(), body));
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<ApiError>> handleAccessDenied(AccessDeniedException ex) {
         ApiError body = ApiError.of(ErrorCode.FORBIDDEN, ex.getMessage());

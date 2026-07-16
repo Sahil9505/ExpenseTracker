@@ -26,6 +26,9 @@ and have local defaults.
 | `DB_PASSWORD` | Backend | `nova` | DB password |
 | `SPRING_PROFILES_ACTIVE` | Backend | `local` | Active Spring profile |
 | `NOVA_CORS_ALLOWED_ORIGINS` | Backend | `http://localhost:5173` | CORS allowlist |
+| `JWT_SECRET` | Backend | local dev default | HS256 signing secret for access + refresh tokens |
+| `JWT_ACCESS_TOKEN_MINUTES` | Backend | `15` | Access token lifetime (minutes) |
+| `JWT_REFRESH_TOKEN_DAYS` | Backend | `30` | Refresh token lifetime (days) |
 | `VITE_API_BASE_URL` | Frontend | `http://localhost:8080` | Backend API origin |
 
 **Loading the variables:**
@@ -77,6 +80,45 @@ mvn test
 
 Tests boot the Spring context against an in-memory H2 database and disable Flyway,
 so they run fully offline. The health endpoint is covered by a context test.
+
+### Auth & JWT
+
+Nova uses stateless JWT auth. Access tokens are short-lived (default 15 minutes);
+refresh tokens are longer-lived (default 30 days) and stored only as a SHA-256
+hash. Tokens require a signing secret supplied via `JWT_SECRET` — always override
+it in shared and production environments. A local-only default exists so
+development works without configuration, but it must never be used beyond a
+single machine.
+
+### Testing auth
+
+```bash
+# Backend: register, login, refresh rotation, protected /me, profile, password change, logout
+mvn test
+
+# Frontend: type safety, lint, production build
+npm run typecheck
+npm run lint
+npm run build
+```
+
+To exercise the flow manually against a running backend:
+
+```bash
+# Register
+curl -s -X POST http://localhost:8080/api/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"you@example.com","password":"sup3rSecret!","fullName":"Ada"}'
+
+# Login (copy accessToken / refreshToken from the response)
+curl -s -X POST http://localhost:8080/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"you@example.com","password":"sup3rSecret!"}'
+
+# Call a protected route with the access token
+curl -s http://localhost:8080/api/users/me \
+  -H "Authorization: Bearer <accessToken>"
+```
 
 ---
 

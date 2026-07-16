@@ -20,6 +20,10 @@ public record ApiResponse<T>(boolean success, String message, T data, Instant ti
         return new ApiResponse<>(true, message, data, Instant.now());
     }
 
+    public static ApiResponse<Void> ok(String message) {
+        return new ApiResponse<>(true, message, null, Instant.now());
+    }
+
     public static ApiResponse<Void> error(String message) {
         return new ApiResponse<>(false, message, null, Instant.now());
     }
