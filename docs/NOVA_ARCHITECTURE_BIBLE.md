@@ -86,8 +86,11 @@ Phase 1 is, by definition, **foundation**: it establishes Core infrastructure
   Tailwind theme mapped to CSS variables.
 - **No giant components.** If a component exceeds a clear responsibility, split
   it.
-- **Data access through TanStack Query.** The dashboard currently uses static
-  mock data, intentionally structured so a query hook can replace it later.
+- **Data access through TanStack Query.** Every finance screen reads live data
+  through typed query hooks (`useDashboardSummary`, `useAccounts`, `useCategories`,
+  `useTransactions`) and writes through `useCreate*/useUpdate*/useDelete*` mutations
+  that invalidate the relevant cache keys. There is no static mock data in the
+  frontend.
 - **Accessible by default.** Buttons have labels, landmarks are present
   (`header`, `nav`, `main`), charts have text alternatives, and interactive
   controls are keyboard-reachable.
@@ -207,10 +210,11 @@ backend/src/main/java/com/nova/
     account/ transaction/ category/ budget/
 
 frontend/src/
-  components/ui/      # Button, Card, Input, Badge, StatCard, ChartCard, ...
+  components/ui/      # Button, Card, Input, Badge, StatCard, ChartCard, Dialog, Select, ...
   components/layout/  # AppLayout, Sidebar, Topbar, ThemeToggle
-  components/health/  # HealthStatusWidget
-  context/  hooks/  lib/  pages/  routes/  types/  data/
+  components/auth/     # AuthLayout, ProtectedRoute, TextField, ScreenLoader
+  components/finance/  # AccountFormDialog, CategoryFormDialog, TransactionForm
+  context/  hooks/  lib/  pages/  routes/  types/
 ```
 
 ---
@@ -235,9 +239,9 @@ speaks for itself.
 | Phase | Scope |
 | --- | --- |
 | **1** | Foundation: backend shell, design system, schema, health, docs |
-| **2 (current)** | Authentication & User Management — JWT access/refresh tokens, registration, login, profile, password change, role foundation |
-| **3** | Transactions, categories, budgets — full CRUD |
-| **4** | Analytics & financial insights |
+| **2** | Authentication & User Management — JWT access/refresh tokens, registration, login, profile, password change, role foundation |
+| **3 (current)** | Core Finance — accounts, categories, and transactions CRUD with automatic balance keeping, plus a live dashboard summary |
+| **4** | Budgets and analytics |
 | **5** | Receipt intelligence |
 
 Each phase extends this foundation without rewrites. The architecture above is

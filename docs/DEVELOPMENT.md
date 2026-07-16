@@ -142,9 +142,17 @@ npm run dev      # http://localhost:5173
 
 ### Mock Data
 
-The dashboard uses static sample data from `src/data/mock.ts`. This is
-intentional: the data layer is structured so a TanStack Query hook can replace the
-mock imports in Phase 2 without touching the UI.
+There is no static sample data in the frontend. The dashboard (and every finance
+page) reads live data through TanStack Query hooks backed by the Nova backend:
+
+- `useDashboardSummary()` → `GET /api/dashboard/summary`
+- `useAccounts()` → `GET /api/accounts`
+- `useCategories()` → `GET /api/categories`
+- `useTransactions(query)` → `GET /api/transactions` (supports server-side filters)
+- `useTransactions` also exposes `useTransaction(id)` for the edit form
+
+Mutations (`useCreate*`, `useUpdate*`, `useDelete*`) invalidate the relevant query
+keys so lists and the dashboard refresh automatically after a write.
 
 ---
 

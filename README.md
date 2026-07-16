@@ -1,10 +1,10 @@
 # Nova
 
-**Nova** is a premium, AI-powered personal finance platform focused on expense tracking, budgeting, financial insights, receipt intelligence, and a polished fintech dashboard experience.
+**Nova** is a premium personal finance platform focused on expense tracking, budgeting, financial insights, and a polished fintech dashboard experience.
 
-This repository is the **Phase 1 foundation**: a clean, production-grade monorepo that future phases will build on. It establishes the backend (Spring Boot), the frontend (React + TypeScript), shared design system, database migrations, and the architectural standards that govern everything that follows.
+The repository has grown through three phases on a clean, production-grade monorepo: the **Phase 1** foundation (backend, frontend, design system, migrations, standards), **Phase 2** authentication and user management, and the current **Phase 3 — Core Finance**, which adds full CRUD for accounts, categories, and transactions plus a live, backend-driven dashboard.
 
-> Phase 1 intentionally ships a foundation only. Full CRUD, authentication, and analytics arrive in later phases.
+> Phase 3 is functional end to end: create accounts, organize categories, record income/expense/transfer transactions with automatic balance updates, and view a dashboard computed entirely from your own data.
 
 ---
 
@@ -18,6 +18,8 @@ This repository is the **Phase 1 foundation**: a clean, production-grade monorep
   - [2. Run the backend](#2-run-the-backend)
   - [3. Run the frontend](#3-run-the-frontend)
 - [Health & API](#health--api)
+- [Finance API (Phase 3)](#finance-api-phase-3)
+- [Frontend Routes](#frontend-routes)
 - [Testing](#testing)
 - [Docker (Optional)](#docker-optional)
 - [Roadmap](#roadmap)
@@ -70,11 +72,11 @@ nova/
 │       └── finance/        # account, transaction, category, budget
 ├── frontend/               # React + TypeScript SPA
 │   └── src/
-│       ├── components/      # ui primitives, layout, health
-│       ├── context/        # ThemeProvider
-│       ├── hooks/          # useHealth, etc.
-│       ├── lib/            # api client, query client, utils
-│       ├── pages/          # Dashboard, NotFound
+│       ├── components/      # ui primitives, layout, auth, finance forms
+│       ├── context/        # ThemeProvider, AuthProvider
+│       ├── hooks/          # useAccounts, useCategories, useTransactions, useDashboard, …
+│       ├── lib/            # api client, query client, validations, finance helpers
+│       ├── pages/          # Dashboard, Accounts, Categories, Transactions, Profile, …
 │       └── types/          # shared types
 ├── docs/                   # Architecture bible, development, database design
 ├── docker/                 # Optional Dockerfiles
@@ -196,6 +198,75 @@ Example health response:
 
 ---
 
+## Finance API (Phase 3)
+
+All finance endpoints are protected and scoped to the authenticated user — you only
+ever see and mutate your own accounts, categories, and transactions. Responses use
+the standard `ApiResponse` envelope.
+
+**Accounts** — cash, checking, savings, credit card, and wallet accounts.
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/api/accounts` | List the user's accounts |
+| `POST` | `/api/accounts` | Create an account |
+| `GET` | `/api/accounts/{id}` | Get one account |
+| `PATCH` | `/api/accounts/{id}` | Update an account (including reactivation) |
+| `DELETE` | `/api/accounts/{id}` | Deactivate an account (history preserved) |
+
+**Categories** — typed `INCOME` or `EXPENSE`, with sensible system defaults seeded per user.
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/api/categories` | List income and expense categories |
+| `POST` | `/api/categories` | Create a category |
+| `GET` | `/api/categories/{id}` | Get one category |
+| `PATCH` | `/api/categories/{id}` | Update a category |
+| `DELETE` | `/api/categories/{id}` | Delete a non-system, unused category |
+
+**Transactions** — `INCOME`, `EXPENSE`, or `TRANSFER`. Amounts are stored positive;
+direction comes from the type. Creating, updating, or deleting a transaction keeps
+account balances consistent automatically (income adds, expense subtracts, transfer
+moves between accounts).
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/api/transactions` | List transactions; supports `type`, `accountId`, `categoryId`, `from`, `to`, `search` filters |
+| `POST` | `/api/transactions` | Record a transaction |
+| `GET` | `/api/transactions/{id}` | Get one transaction |
+| `PATCH` | `/api/transactions/{id}` | Update a transaction (balances re-synced) |
+| `DELETE` | `/api/transactions/{id}` | Delete a transaction (balance effect reversed) |
+
+- `INCOME` / `EXPENSE` require an `accountId` and a matching `categoryId`.
+- `TRANSFER` requires a source `accountId` and a `destinationAccountId` (which must differ) and uses no category.
+
+**Dashboard**
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/api/dashboard/summary` | Aggregated snapshot: total balance, monthly income/expenses, net cash flow, six-month trend, category breakdown, and recent transactions |
+
+---
+
+## Frontend Routes
+
+All application routes below are protected and render inside the authenticated app
+shell; unauthenticated visitors are redirected to `/login`.
+
+| Route | Description |
+| --- | --- |
+| `/` | Dashboard — live KPIs, cash flow chart, category breakdown, recent activity |
+| `/accounts` | Accounts list with create/edit and deactivate/reactivate |
+| `/categories` | Income and expense categories with create/edit/delete |
+| `/transactions` | Transactions list with type/account/category/date/search filters |
+| `/transactions/new` | Create a transaction |
+| `/transactions/:id/edit` | Edit an existing transaction |
+| `/settings/profile` | Profile and password management |
+
+Public routes: `/login`, `/register`, `/forgot-password`.
+
+---
+
 ## Testing
 
 ```bash
@@ -224,8 +295,8 @@ The quick start above does not use Docker. See `docs/DEVELOPMENT.md` for details
 ## Roadmap
 
 - **Phase 2** — Authentication & User Management (JWT access/refresh tokens, registration, login, profile, password change, role foundation) — *complete*
-- **Phase 3** — Transactions, categories, and budgeting CRUD
-- **Phase 4** — Analytics and financial insights
-- **Phase 5** — Receipt intelligence
+- **Phase 3** — Core Finance: accounts, categories, and transactions CRUD with automatic balance keeping and a live dashboard summary — *complete*
+- **Phase 4** — Budgets and analytics
+- **Phase 5** — Financial insights and receipt intelligence
 
 See `docs/NOVA_ARCHITECTURE_BIBLE.md` for the full vision, standards, and conventions.

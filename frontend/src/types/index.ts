@@ -71,3 +71,152 @@ export interface ApiFieldError {
   field: string;
   message: string;
 }
+
+// ---------------------------------------------------------------------------
+// Finance domain (Phase 3)
+// ---------------------------------------------------------------------------
+
+export type AccountType = 'CASH' | 'CHECKING' | 'SAVINGS' | 'CREDIT_CARD' | 'WALLET';
+export type CategoryType = 'INCOME' | 'EXPENSE';
+export type TransactionType = 'INCOME' | 'EXPENSE' | 'TRANSFER';
+
+export interface Account {
+  id: string;
+  name: string;
+  type: AccountType;
+  currency: string;
+  balance: number;
+  active: boolean;
+  institution?: string | null;
+  color?: string | null;
+  icon?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  type: CategoryType;
+  color?: string | null;
+  icon?: string | null;
+  system: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AccountRef {
+  id: string;
+  name: string;
+  type: AccountType;
+  currency: string;
+}
+
+export interface CategoryRef {
+  id: string;
+  name: string;
+  type: CategoryType;
+  color?: string | null;
+  icon?: string | null;
+}
+
+export interface Transaction {
+  id: string;
+  amount: number;
+  type: TransactionType;
+  account: AccountRef | null;
+  destinationAccount: AccountRef | null;
+  category: CategoryRef | null;
+  merchant?: string | null;
+  note?: string | null;
+  currency: string;
+  tags?: string | null;
+  occurredAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CategoryBreakdownItem {
+  name: string;
+  color?: string | null;
+  icon?: string | null;
+  amount: number;
+}
+
+export interface MonthlyPoint {
+  month: string;
+  label: string;
+  income: number;
+  expenses: number;
+}
+
+export interface DashboardSummary {
+  totalBalance: number;
+  monthlyIncome: number;
+  monthlyExpenses: number;
+  netCashFlow: number;
+  currency: string;
+  accountsCount: number;
+  activeAccountsCount: number;
+  recentTransactions: Transaction[];
+  categoryBreakdown: CategoryBreakdownItem[];
+  monthlyTrend: MonthlyPoint[];
+}
+
+export interface CreateAccountPayload {
+  name: string;
+  type: AccountType;
+  currency: string;
+  balance?: number;
+  institution?: string;
+  color?: string;
+  icon?: string;
+}
+
+export interface UpdateAccountPayload {
+  name?: string;
+  type?: AccountType;
+  currency?: string;
+  balance?: number;
+  active?: boolean;
+  institution?: string;
+  color?: string;
+  icon?: string;
+}
+
+export interface CreateCategoryPayload {
+  name: string;
+  type: CategoryType;
+  color?: string;
+  icon?: string;
+}
+
+export interface UpdateCategoryPayload {
+  name?: string;
+  color?: string;
+  icon?: string;
+}
+
+export interface CreateTransactionPayload {
+  amount: number;
+  type: TransactionType;
+  accountId?: string;
+  destinationAccountId?: string;
+  categoryId?: string;
+  merchant?: string;
+  note?: string;
+  currency?: string;
+  tags?: string;
+  occurredAt: string;
+}
+
+export type UpdateTransactionPayload = Partial<CreateTransactionPayload>;
+
+export interface TransactionQuery {
+  type?: TransactionType;
+  accountId?: string;
+  categoryId?: string;
+  from?: string;
+  to?: string;
+  search?: string;
+}
