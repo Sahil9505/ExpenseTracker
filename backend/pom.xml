@@ -24,7 +24,34 @@
         <springdoc.version>2.8.6</springdoc.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <lombok.version>1.18.38</lombok.version>
+        <flyway.version>12.6.0</flyway.version>
     </properties>
+
+    <!-- Flyway 12 pulls Jackson 3 (tools.jackson) transitively. Jackson 3.1.x's
+         JacksonAnnotationIntrospector references the Jackson-2-only class
+         com.fasterxml.jackson.annotation.JsonSerializeAs, which is absent from
+         Spring Boot 3.5.5's Jackson 2 classpath and breaks startup. Jackson 3.0.x
+         does not have this reference, so we pin the Jackson 3 line to 3.0.4.
+         Flyway 12.6.0 is the first release that supports PostgreSQL 18. -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>tools.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>3.0.4</version>
+            </dependency>
+            <dependency>
+                <groupId>tools.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>3.0.4</version>
+            </dependency>
+            <dependency>
+                <groupId>tools.jackson.dataformat</groupId>
+                <artifactId>jackson-dataformat-toml</artifactId>
+                <version>3.0.4</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -51,6 +78,15 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
+        </dependency>
+
+        <!-- Flyway 12 split database support into per-DB modules; flyway-core no
+             longer bundles any DatabaseType. This module lets Flyway recognise
+             and migrate PostgreSQL. Version must match flyway-core. -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+            <version>${flyway.version}</version>
         </dependency>
 
         <dependency>

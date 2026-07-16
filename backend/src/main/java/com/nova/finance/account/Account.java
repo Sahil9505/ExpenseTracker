@@ -1,5 +1,6 @@
 package com.nova.finance.account;
 
+import com.nova.common.BaseEntity;
 import com.nova.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -19,15 +20,21 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+/**
+ * A user-owned financial account (cash, bank, card, wallet). The {@code balance}
+ * is the source of truth for the user's money in this account and is kept in sync
+ * with transactions by the transaction service.
+ */
 @Entity
 @Table(name = "accounts")
 @Getter
 @Setter
 @NoArgsConstructor
-public class Account extends com.nova.common.BaseEntity {
+public class Account extends BaseEntity {
 
+    /** Account kinds supported by Nova. Stored as the string value in {@code type}. */
     public enum Type {
-        CHECKING, SAVINGS, CREDIT, WALLET, INVESTMENT
+        CASH, CHECKING, SAVINGS, CREDIT_CARD, WALLET
     }
 
     @Id
@@ -45,7 +52,7 @@ public class Account extends com.nova.common.BaseEntity {
     @Column(nullable = false)
     private Type type;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 8)
     private String currency;
 
     @Column(nullable = false, precision = 18, scale = 4)
@@ -53,6 +60,14 @@ public class Account extends com.nova.common.BaseEntity {
 
     @Column(name = "is_active", nullable = false)
     private boolean active;
+
+    private String institution;
+
+    @Column(length = 32)
+    private String color;
+
+    @Column(length = 64)
+    private String icon;
 
     public Account(User user, String name, Type type, String currency, BigDecimal balance) {
         this.user = user;
